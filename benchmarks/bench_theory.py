@@ -29,12 +29,12 @@ from pathlib import Path
 import torch
 
 from glassbox.hodge import (
-    _compute_G_materialized,
-    _compute_routing_features_materialized,
-    _estimate_curl_materialized,
-    _sample_triangles,
+    compute_G_materialized,
+    compute_routing_features_materialized,
+    estimate_curl_materialized,
+    sample_triangles,
     compute_G_matrix_free,
-    compute_routing_features,
+    compute_routing_features_matrix_free,
     estimate_curl_matrix_free,
 )
 from glassbox.svd import (
@@ -219,7 +219,7 @@ def experiment_2_hodge_convergence(n_values=None, D=4, n_seeds=10):
             # Matrix-free
             _, d_k_mf = compute_dk_blocked(Q, K, scale)
             lse = compute_logsumexp_blocked(Q, K, scale)
-            f = compute_routing_features(Q, K, d_k_mf, scale, lse, rank=2, min_samples=200)
+            f = compute_routing_features_matrix_free(Q, K, d_k_mf, scale, lse, rank=2, min_samples=200)
 
             G_errs.append(abs(f["G"] - G_ex))
             C_corr.append((f["C"], C_ex))
@@ -332,7 +332,7 @@ def experiment_4_subsampling(N=128, D=8, n_sub_values=None, n_subsamples=20, n_s
         # Full-sequence features
         _, d_k_full = compute_dk_blocked(Q_full, K_full, scale)
         lse_full = compute_logsumexp_blocked(Q_full, K_full, scale)
-        f_full = compute_routing_features(
+        f_full = compute_routing_features_matrix_free(
             Q_full, K_full, d_k_full, scale, lse_full, rank=4, min_samples=200,
         )
 
@@ -348,7 +348,7 @@ def experiment_4_subsampling(N=128, D=8, n_sub_values=None, n_subsamples=20, n_s
                     K_sub = K_full[idx]
                     _, d_k_sub = compute_dk_blocked(Q_sub, K_sub, scale)
                     lse_sub = compute_logsumexp_blocked(Q_sub, K_sub, scale)
-                    f_sub = compute_routing_features(
+                    f_sub = compute_routing_features_matrix_free(
                         Q_sub, K_sub, d_k_sub, scale, lse_sub, rank=2, min_samples=200,
                     )
                     G_vals.append(f_sub["G"])
@@ -404,13 +404,13 @@ def experiment_5_perturbation(n=32, D=8, n_seeds=3):
         # Baseline features
         _, d_k_mf = compute_dk_blocked(Q, K, scale)
         lse = compute_logsumexp_blocked(Q, K, scale)
-        f0 = compute_routing_features(Q, K, d_k_mf, scale, lse, rank=2, min_samples=200)
+        f0 = compute_routing_features_matrix_free(Q, K, d_k_mf, scale, lse, rank=2, min_samples=200)
 
         for eps in epsilons:
             Q_pert = Q + eps * dQ
             _, d_k_p = compute_dk_blocked(Q_pert, K, scale)
             lse_p = compute_logsumexp_blocked(Q_pert, K, scale)
-            f_p = compute_routing_features(Q_pert, K, d_k_p, scale, lse_p, rank=2, min_samples=200)
+            f_p = compute_routing_features_matrix_free(Q_pert, K, d_k_p, scale, lse_p, rank=2, min_samples=200)
 
             dG = abs(f_p["G"] - f0["G"])
             dC = abs(f_p["C"] - f0["C"])
@@ -459,7 +459,7 @@ def experiment_6_curl_relationship(n_values=None, D=4, n_seeds=20):
         for seed in range(n_seeds):
             Q, K, scale, A, M, d_k_inv_sqrt = _make_M(n, D, seed=seed)
             G_ex, C_ex, Gamma_ex, _, _, _ = _exact_hodge_coefficients(M)
-            C_rms = _estimate_curl_materialized(M, target_cv=0.01, seed=42)
+            C_rms = estimate_curl_materialized(M, target_cv=0.01, seed=42)
             pairs.append((C_rms, C_ex, G_ex))
 
         c_rms_vals = [p[0] for p in pairs]
